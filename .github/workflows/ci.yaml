@@ -1,0 +1,30 @@
+---
+name: run ci
+on: [push, pull_request]
+
+jobs:
+  build:
+    name: unit tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        neovim_version: ['nightly', 'v0.10.0']
+
+    steps:
+      - name: git checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+      - name: install neovim 
+        uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: ${{ matrix.neovim_version }}
+      - name: check version of curl and jq
+        run: |
+          jq --version
+          curl --version
+      - name: run tests
+        run: |
+          nvim --headless --noplugin -u spec/minimal_init.lua -c "PlenaryBustedDirectory spec/ {sequential = true, minimal_init = 'spec/minimal_init.lua'}"
+          
