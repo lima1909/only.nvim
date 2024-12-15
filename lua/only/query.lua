@@ -1,3 +1,5 @@
+local n = require("only.node")
+
 local M = {}
 
 -- find 'describe' or 'it' top level functions,
@@ -33,29 +35,16 @@ M.find_top_level_funcs = function(bufnr, tag)
 		)
 	)
 
-	local funcs = {}
-	local current
+	local nodes = {}
 
 	for id, node, _ in query:iter_captures(root, bufnr) do
 		local capture_name = query.captures[id]
 		if capture_name == "func" then
-			-- has no parent, root functions
-			-- if not node:parent():parent() then
-			local row, col = node:range()
-			current = { row = row, col = col }
-			-- else
-			-- reset current, if it is not a root function
-			-- current = nil
-			-- end
-		elseif capture_name == "fname" and current then
-			current.name = vim.treesitter.get_node_text(node, bufnr)
-		elseif capture_name == "desc" and current then
-			current.desc = vim.treesitter.get_node_text(node, bufnr)
-			table.insert(funcs, current)
+			table.insert(nodes, n.new(node, bufnr))
 		end
 	end
 
-	return funcs
+	return nodes
 end
 
 return M
