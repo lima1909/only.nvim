@@ -1,5 +1,6 @@
 local assert = require("luassert")
 local q = require("only.query")
+local f = require("only.format")
 
 describe("query", function()
 	local bufnr
@@ -41,7 +42,10 @@ end)
 	end)
 
 	it("find not only functions", function()
+		local start = vim.loop.hrtime()
 		local funcs = q.find_top_level_funcs(bufnr, "only")
+		print(f.duration_to_str(vim.loop.hrtime() - start))
+
 		assert.are.same(3, #funcs)
 		assert.are.same({ desc = "d0", row = 1, col = 2, name = "describe" }, funcs[1]:info())
 		assert.are.same({ desc = "d1", row = 11, col = 0, name = "describe" }, funcs[2]:info())
