@@ -41,6 +41,12 @@ M.find_top_level_funcs = function(bufnr, tag)
 		local capture_name = query.captures[id]
 		if capture_name == "func" then
 			table.insert(nodes, n.new(node, bufnr))
+			-- elseif capture_name == "desc" then
+			-- 	local hl = "Search"
+			-- 	local ns = 0
+			-- 	local line, cs, _, ce = node:range()
+			-- 	print("--" .. line .. " " .. cs .. " " .. ce)
+			-- 	vim.api.nvim_buf_add_highlight(bufnr, ns, hl, line, cs, ce)
 		end
 	end
 

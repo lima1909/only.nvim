@@ -12,10 +12,20 @@ function M.check()
 	if has_busted == true then
 		vim.health.ok("Plenary busted is installed.")
 	else
-		vim.health.error("Plenary busted is missing. Pleas install it.")
+		vim.health.error("Plenary busted is missing. Pleas install: 'nvim-lua/plenary.nvim'.")
 	end
+
+	local ts_parsers = require("nvim-treesitter.parsers")
+	local lua_parser_installed = ts_parsers.has_parser("lua")
+	if lua_parser_installed then
+		print("Tree-sitter Lua parser is installed.")
+		vim.health.ok("Treesitter for the LUA-parser is installed.")
+	else
+		print("Treesitter for the LUA-parser is not installed.")
+	end
+
 	-- Additional checks
-	vim.health.info("Only.nvim is healthy.")
+	vim.health.info("'only.nvim' is HEALTHY.")
 end
 
 return M
