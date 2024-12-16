@@ -1,46 +1,44 @@
-local n = require("only.node")
+local func = require("only.func")
 
 local M = {}
 
+M.new = function(bufnr, tag)
+	return setmetatable({
+		bufnr = bufnr,
+		tag = tag,
+		to_pending = {},
+		must_check = {},
+	}, { __index = M })
+end
+
 -- find 'describe' or 'it' top level functions,
 -- which are under the root ('chunk') and do NOT contain the 'tag'
-M.find_top_level_funcs = function(bufnr, tag)
-	bufnr = bufnr or 0
-
-	local parser = vim.treesitter.get_parser(bufnr, "lua")
+function M:find_top_level_funcs()
+	local parser = vim.treesitter.get_parser(self.bufnr, "lua")
 	local tree = parser:parse()[1]
 	local root = tree:root()
 
 	local query = vim.treesitter.query.parse(
 		"lua",
-		-- chunk means only the functions wich are direct under the root node
-		string.format(
-			[[
+		-- chunk means only the functions which are direct under the root node
+		[[
 (chunk 
-(
-   function_call
-    name: (identifier) @fname
-    (#any-of? @fname "describe" "it")
-
-    arguments: (arguments 
-  	(
-	 string 
-	 content: (string_content) @desc)
-	 (#not-match? @desc ".*%s.*")
-	) 
-) @func
+( function_call name: (identifier) @fname (#any-of? @fname "describe" "it")) @func
 )
-]],
-			tag
-		)
+]]
 	)
 
-	local nodes = {}
-
-	for id, node, _ in query:iter_captures(root, bufnr) do
+	for id, node, _ in query:iter_captures(root, self.bufnr) do
 		local capture_name = query.captures[id]
 		if capture_name == "func" then
-			table.insert(nodes, n.new(node, bufnr))
+			local n = func.new(node, self.bufnr)
+
+			if n:func_desc():match(self.tag) then
+				table.insert(self.to_pending, n)
+			else
+				table.insert(self.must_check, n)
+			end
+			-- HIGHLIGHT
 			-- elseif capture_name == "desc" then
 			-- 	local hl = "Search"
 			-- 	local ns = 0
@@ -50,7 +48,7 @@ M.find_top_level_funcs = function(bufnr, tag)
 		end
 	end
 
-	return nodes
+	return self
 end
 
 return M
