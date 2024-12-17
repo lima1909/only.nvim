@@ -33,7 +33,7 @@ function M:find_top_level_funcs()
 		if capture_name == "func" then
 			local n = func.new(node, self.bufnr)
 
-			if n:func_desc():match(self.tag) then
+			if n:desc():match(self.tag) then
 				table.insert(self.to_pending, n)
 			else
 				table.insert(self.must_check, n)

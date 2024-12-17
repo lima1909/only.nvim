@@ -5,10 +5,10 @@ local M = {}
 -- - name of the function
 -- - text of the description
 --
-M.new = function(tsnode, bufnr)
+M.new = function(tsnode, bufnr_or_code)
 	return setmetatable({
 		inner = tsnode,
-		bufnr = bufnr or 0,
+		content = bufnr_or_code or 0,
 	}, { __index = M })
 end
 
@@ -16,32 +16,32 @@ function M:range()
 	return self.inner:range()
 end
 
-function M:func_name()
+function M:name()
 	if self.inner:type() == "function_call" then
 		local name = self.inner:field("name")[1]
-		return vim.treesitter.get_node_text(name, self.bufnr)
+		return vim.treesitter.get_node_text(name, self.content)
 	else
-		error("this node is not an function_call: ", self.inner:type())
+		error("this node is not an function_call: " .. self.inner:type(), 0)
 	end
 end
 
-function M:func_desc()
+function M:desc()
 	if self.inner:type() == "function_call" then
 		local arg = self.inner:field("arguments")[1]
 		local desc = arg:child(1):field("content")[1]
-		return vim.treesitter.get_node_text(desc, self.bufnr)
+		return vim.treesitter.get_node_text(desc, self.content)
 	else
-		error("this node is not an function_call: ", self.inner:type())
+		error("this node is not an function_call: " .. self.inner:type(), 0)
 	end
 end
 
-local function find_first_func_node(parent_node)
+local function find_first_func_node(parent_node, content)
 	for child in parent_node:iter_children() do
 		if child:type() == "function_call" then
-			return M.new(child)
+			return M.new(child, content)
 		end
 
-		local result = find_first_func_node(child)
+		local result = find_first_func_node(child, content)
 		if result then
 			return result
 		end
@@ -51,7 +51,7 @@ local function find_first_func_node(parent_node)
 end
 
 function M:children()
-	local child_func = find_first_func_node(self.inner)
+	local child_func = find_first_func_node(self.inner, self.content)
 	if not child_func then
 		return nil
 	end
@@ -64,14 +64,14 @@ function M:children()
 			return children
 		end
 
-		child_func = M.new(next)
+		child_func = M.new(next, self.content)
 		table.insert(children, child_func)
 	end
 end
 
 function M:info()
 	local r, c = self:range()
-	return { row = r, col = c, fname = self:func_name(), desc = self:func_desc() }
+	return { row = r, col = c, name = self:name(), desc = self:desc() }
 end
 
 -- M.find_children = function(parent_node, results)
