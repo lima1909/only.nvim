@@ -76,6 +76,6 @@ end)
 		assert.are.same({ desc = "i2", row = 14, col = 1, name = "it" }, d1[2]:info())
 
 		local i3 = funcs.must_check[3]:children()
-		assert.is_nil(i3)
+		assert.are.same({}, i3)
 	end)
 end)

@@ -35,13 +35,13 @@ function M:desc()
 	end
 end
 
-local function find_first_func_node(parent_node, content)
+local function find_first_child_func_node(parent_node)
 	for child in parent_node:iter_children() do
 		if child:type() == "function_call" then
-			return M.new(child, content)
+			return child
 		end
 
-		local result = find_first_func_node(child, content)
+		local result = find_first_child_func_node(child)
 		if result then
 			return result
 		end
@@ -51,45 +51,20 @@ local function find_first_func_node(parent_node, content)
 end
 
 function M:children()
-	local child_func = find_first_func_node(self.inner, self.content)
-	if not child_func then
-		return nil
+	local children = {}
+
+	local child_func = find_first_child_func_node(self.inner)
+	while child_func do
+		table.insert(children, M.new(child_func, self.content))
+		child_func = child_func:next_sibling()
 	end
 
-	local children = { child_func }
-
-	while true do
-		local next = child_func.inner:next_sibling()
-		if not next then
-			return children
-		end
-
-		child_func = M.new(next, self.content)
-		table.insert(children, child_func)
-	end
+	return children
 end
 
 function M:info()
 	local r, c = self:range()
 	return { row = r, col = c, name = self:name(), desc = self:desc() }
 end
-
--- M.find_children = function(parent_node, results)
--- 	results = results or {}
---
--- 	if not parent_node then
--- 		return results
--- 	end
---
--- 	for child in parent_node:iter_children() do
--- 		if child:type() == "function_call" then
--- 			table.insert(results, child)
--- 		end
---
--- 		M.find_children(child, results)
--- 	end
---
--- 	return results
--- end
 
 return M
