@@ -4,7 +4,7 @@ local assert = require("luassert")
 local f = require("only.func")
 
 describe("query", function()
-	local function parse(input)
+	local parse_string = function(input)
 		local parser = vim.treesitter.get_string_parser(input, "lua", {})
 		local tree = parser:parse()[1]
 		local chunk = tree:root()
@@ -15,7 +15,7 @@ describe("query", function()
 		local input = [[ 
 describe("example", function() end)
 ]]
-		local chunk = parse(input)
+		local chunk = parse_string(input)
 		local desc = chunk:children()[1]
 		assert.are.same("describe", desc:name())
 		assert.are.same("example", desc:desc())
@@ -29,7 +29,7 @@ describe("example", function()
   it("second", function() end)
 end)
 ]]
-		local chunk = parse(input)
+		local chunk = parse_string(input)
 		local desc = chunk:children()[1]
 		assert.are.same("describe", desc:name())
 		assert.are.same("example", desc:desc())
@@ -48,7 +48,7 @@ describe("parent", function()
   end)
 end)
 ]]
-		local chunk = parse(input)
+		local chunk = parse_string(input)
 		local desc = chunk:children()[1]
 		assert.are.same({ desc = "parent", row = 0, col = 0, name = "describe" }, desc:info())
 

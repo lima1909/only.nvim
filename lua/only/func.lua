@@ -8,7 +8,7 @@ local M = {}
 M.new = function(tsnode, bufnr_or_code)
 	return setmetatable({
 		inner = tsnode,
-		content = bufnr_or_code or 0,
+		source = bufnr_or_code or 0,
 	}, { __index = M })
 end
 
@@ -19,7 +19,7 @@ end
 function M:name()
 	if self.inner:type() == "function_call" then
 		local name = self.inner:field("name")[1]
-		return vim.treesitter.get_node_text(name, self.content)
+		return vim.treesitter.get_node_text(name, self.source)
 	else
 		error("this node is not an function_call: " .. self.inner:type(), 0)
 	end
@@ -29,7 +29,7 @@ function M:desc()
 	if self.inner:type() == "function_call" then
 		local arg = self.inner:field("arguments")[1]
 		local desc = arg:child(1):field("content")[1]
-		return vim.treesitter.get_node_text(desc, self.content)
+		return vim.treesitter.get_node_text(desc, self.source)
 	else
 		error("this node is not an function_call: " .. self.inner:type(), 0)
 	end
@@ -55,7 +55,7 @@ function M:children()
 
 	local child_func = find_first_child_func_node(self.inner)
 	while child_func do
-		table.insert(children, M.new(child_func, self.content))
+		table.insert(children, M.new(child_func, self.source))
 		child_func = child_func:next_sibling()
 	end
 
