@@ -1,9 +1,7 @@
----@diagnostic disable: need-check-nil
-
 local assert = require("luassert")
 local f = require("only.func")
 
-describe("query", function()
+describe("func nodes:", function()
 	local parse_string = function(input)
 		local parser = vim.treesitter.get_string_parser(input, "lua", {})
 		local tree = parser:parse()[1]
