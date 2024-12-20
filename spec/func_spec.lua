@@ -1,6 +1,84 @@
 local assert = require("luassert")
 local f = require("only.func")
 
+describe("get func node:", function()
+	local function create_win_and_set_cursor(input, cursor)
+		local bufnr = vim.api.nvim_create_buf(false, false)
+		vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, vim.split(input, "\n"))
+		vim.api.nvim_set_current_buf(bufnr)
+
+		vim.api.nvim_open_win(bufnr, false, { relative = "win", row = 10, col = 30, width = 12, height = 30 })
+		local winnr = vim.api.nvim_get_current_win()
+
+		vim.api.nvim_win_set_cursor(winnr, cursor)
+
+		return bufnr
+	end
+
+	it("func not found", function()
+		local input = [[
+-- comment
+describe("describe test-func", function() end)
+
+before_each(function() end)
+]]
+		local bufnr = create_win_and_set_cursor(input, { 1, 1 })
+		local ok = pcall(f.node_at_cursor, bufnr)
+		assert.is_false(ok)
+
+		bufnr = create_win_and_set_cursor(input, { 3, 1 })
+		ok = pcall(f.node_at_cursor, bufnr)
+		assert.is_false(ok)
+
+		bufnr = create_win_and_set_cursor(input, { 4, 1 })
+		ok = pcall(f.node_at_cursor, bufnr)
+		assert.is_false(ok)
+	end)
+
+	it("func found", function()
+		local bufnr = create_win_and_set_cursor(
+			[[
+-- comment
+describe("describe test-func", function() end)
+]],
+			{ 2, 1 }
+		)
+
+		local func = f.node_at_cursor(bufnr)
+		assert.are.same("describe test-func", func:desc())
+	end)
+
+	it("func found", function()
+		local input = [[
+-- comment
+describe("describe", function()
+  it("it test-func", function()
+    before_each(function() end)
+  end)
+end)
+]]
+		local bufnr = create_win_and_set_cursor(input, { 3, 3 })
+		local func = f.node_at_cursor(bufnr)
+		assert.are.same("it test-func", func:desc())
+
+		bufnr = create_win_and_set_cursor(input, { 4, 6 })
+		func = f.node_at_cursor(bufnr)
+		assert.are.same("it test-func", func:desc())
+
+		bufnr = create_win_and_set_cursor(input, { 5, 3 })
+		func = f.node_at_cursor(bufnr)
+		assert.are.same("it test-func", func:desc())
+
+		bufnr = create_win_and_set_cursor(input, { 2, 3 })
+		func = f.node_at_cursor(bufnr)
+		assert.are.same("describe", func:desc())
+
+		bufnr = create_win_and_set_cursor(input, { 6, 3 })
+		func = f.node_at_cursor(bufnr)
+		assert.are.same("describe", func:desc())
+	end)
+end)
+
 describe("func nodes:", function()
 	local parse_string = function(input)
 		local parser = vim.treesitter.get_string_parser(input, "lua", {})

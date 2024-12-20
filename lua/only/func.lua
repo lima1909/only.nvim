@@ -1,15 +1,43 @@
 local M = {}
 
+local function find_first_parent_func_node(node, source)
+	while node do
+		if node:type() == "function_call" then
+			local name = node:field("name")[1]
+			local txt = vim.treesitter.get_node_text(name, source)
+			if txt == "describe" or txt == "it" then
+				return node
+			end
+		end
+
+		node = node:parent()
+	end
+
+	return nil
+end
+
 -- create a wrapper for an TSNode, to get ease access to the methods:
 -- - range
 -- - name of the function
 -- - text of the description
 --
-M.new = function(tsnode, bufnr_or_code)
+M.new = function(tsnode, source)
 	return setmetatable({
 		inner = tsnode,
-		source = bufnr_or_code or 0,
+		source = source or 0,
 	}, { __index = M })
+end
+
+-- create a wrapper for the TSNode, which is founded at the cursor position
+M.node_at_cursor = function(source)
+	source = source or 0
+
+	local node = find_first_parent_func_node(vim.treesitter.get_node({ lang = "lua" }), source)
+	if not node then
+		error("no funcion node found", 0)
+	end
+
+	return M.new(node, source)
 end
 
 function M:range()

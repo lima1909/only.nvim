@@ -2,37 +2,18 @@ local func = require("only.func")
 
 local M = {}
 
-function M.tag_filter(tag)
-	local tags = tag
-	if type(tag) == "string" then
-		tags = { tag }
-	end
-
-	return function(func_node)
-		if not tags then
-			return false
-		end
-
-		for _, t in ipairs(tags) do
-			if not func_node or not func_node:desc() then
-				return false
-			elseif func_node:desc():match(t) then
-				return true
-			end
-		end
-
-		return false
-	end
+M.to_pending_with_tags = function(bufnr, tags)
+	return M.new(bufnr, M.tag_filter(tags)):_find_all_to_pending_funcs()
 end
 
-function M.find_all_to_pending_funcs(bufnr, tag)
-	return M.new(bufnr, tag):_find_all_to_pending_funcs()
+M.to_pending_with_node = function(bufnr, search_node)
+	return M.new(bufnr, M.node_filter(search_node)):_find_all_to_pending_funcs()
 end
 
-M.new = function(bufnr, tag)
+M.new = function(bufnr, filter)
 	return setmetatable({
 		bufnr = bufnr,
-		tag_filter = M.tag_filter(tag),
+		filter = filter,
 		to_pending = {},
 	}, { __index = M })
 end
@@ -59,11 +40,12 @@ function M:_find_all_to_pending_funcs()
 		if capture_name == "func" then
 			local n = func.new(node, self.bufnr)
 
-			if self.tag_filter(n) then
-				-- will be converted to pending function
-				table.insert(self.to_pending, n)
-			else
-				self:_children_walker(n)
+			if self.filter(n) == false then
+				if #n:children() > 0 then
+					self:_children_walker(n)
+				else
+					table.insert(self.to_pending, n)
+				end
 			end
 		end
 	end
@@ -76,29 +58,74 @@ function M:_children_walker(parent_node)
 		return
 	end
 
-	-- if one child matched, than parent-node NOT add to_pending
-	local parent_to_pending = true
 	-- if no child matched, than add the parent-node to_pending
-	local no_match = false
+	local not_match = false
+	-- if one child matched, than parent-node NOT add to_pending
+	local at_least_one_match = false
 
 	local temp_children = {}
 	for _, child in ipairs(parent_node:children()) do
-		if self.tag_filter(child) == true then
-			parent_to_pending = false
-			table.insert(temp_children, child)
-		else
-			no_match = true
-		end
+		if self.filter(child) == false then
+			not_match = true
 
-		self:_children_walker(child)
+			if #child:children() > 0 then
+				not_match = false
+				self:_children_walker(child)
+			else
+				table.insert(temp_children, child)
+			end
+		else
+			at_least_one_match = true
+		end
 	end
 
-	if (no_match == true and parent_to_pending == true) or (no_match == false and parent_to_pending == false) then
+	if at_least_one_match == false and not_match == true then
 		table.insert(self.to_pending, parent_node)
+	elseif at_least_one_match == true and not_match == false then
+		return
 	else
 		for _, c in ipairs(temp_children) do
 			table.insert(self.to_pending, c)
 		end
+	end
+end
+
+function M.tag_filter(tag)
+	local tags = tag
+	if type(tag) == "string" then
+		tags = { tag }
+	end
+
+	return function(func_node)
+		if not tags or not func_node then
+			return false
+		end
+
+		local desc = func_node:desc()
+		if not desc then
+			return false
+		end
+
+		for _, t in ipairs(tags) do
+			if desc:match(t) then
+				return true
+			end
+		end
+
+		return false
+	end
+end
+
+function M.node_filter(search_node)
+	return function(func_node)
+		if not search_node or not func_node then
+			return false
+		end
+
+		local srow, scol = search_node:range()
+		local frow, fcol = func_node:range()
+		local result = srow == frow and scol == fcol
+		return result
 	end
 end
 
