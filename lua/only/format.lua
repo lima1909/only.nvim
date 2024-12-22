@@ -28,8 +28,9 @@ M.highlight_to_pending_nodes = function(to_pending_nodes, bufnr)
 	local namespace = 0
 
 	for _, n in pairs(to_pending_nodes) do
-		local line, cs = n:range()
-		vim.api.nvim_buf_add_highlight(bufnr, namespace, highlight, line, cs, #n:name())
+		local line, cstart = n:range()
+		local cend = cstart + #n:name()
+		vim.api.nvim_buf_add_highlight(bufnr, namespace, highlight, line, cstart, cend)
 	end
 end
 

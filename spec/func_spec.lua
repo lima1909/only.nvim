@@ -41,7 +41,7 @@ before_each(function() end)
 -- comment
 describe("describe test-func", function() end)
 ]],
-			{ 2, 1 }
+			{ 2, 0 }
 		)
 
 		local func = f.node_at_cursor(bufnr)
@@ -84,6 +84,7 @@ describe("func nodes:", function()
 		local parser = vim.treesitter.get_string_parser(input, "lua", {})
 		local tree = parser:parse()[1]
 		local chunk = tree:root()
+		-- print(".." .. chunk:next_sibling():type())
 		return f.new(chunk, input)
 	end
 

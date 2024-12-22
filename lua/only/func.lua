@@ -1,16 +1,13 @@
 local M = {}
 
-local function find_first_parent_func_node(node, source)
-	while node do
-		if node:type() == "function_call" then
-			local name = node:field("name")[1]
-			local txt = vim.treesitter.get_node_text(name, source)
-			if txt == "describe" or txt == "it" then
-				return node
-			end
+local function find_first_parent_func_node(tsnode, source)
+	while tsnode do
+		local node = M.new(tsnode, source)
+		if node:is_valid_func_node() then
+			return node
 		end
 
-		node = node:parent()
+		tsnode = tsnode:parent()
 	end
 
 	return nil
@@ -34,10 +31,19 @@ M.node_at_cursor = function(source)
 
 	local node = find_first_parent_func_node(vim.treesitter.get_node({ lang = "lua" }), source)
 	if not node then
-		error("no funcion node found", 0)
+		error("no function node found", 0)
 	end
 
-	return M.new(node, source)
+	return node
+end
+
+function M:is_valid_func_node()
+	if self.inner:type() ~= "function_call" then
+		return false
+	end
+
+	local ok, name = pcall(self.name, self)
+	return ok and (name == "describe" or name == "it")
 end
 
 function M:range()
@@ -63,13 +69,13 @@ function M:desc()
 	end
 end
 
-local function find_first_child_func_node(parent_node)
-	for child in parent_node:iter_children() do
-		if child:type() == "function_call" then
+function M:_find_first_child_func_node(tsparent_node)
+	for child in tsparent_node:iter_children() do
+		if M.new(child, self.source):is_valid_func_node() then
 			return child
 		end
 
-		local result = find_first_child_func_node(child)
+		local result = self:_find_first_child_func_node(child)
 		if result then
 			return result
 		end
@@ -81,9 +87,12 @@ end
 function M:children()
 	local children = {}
 
-	local child_func = find_first_child_func_node(self.inner)
+	local child_func = self:_find_first_child_func_node(self.inner)
 	while child_func do
-		table.insert(children, M.new(child_func, self.source))
+		local node = M.new(child_func, self.source)
+		if node:is_valid_func_node() then
+			table.insert(children, node)
+		end
 		child_func = child_func:next_sibling()
 	end
 

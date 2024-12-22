@@ -12,7 +12,7 @@ end
 
 M.new = function(bufnr, filter)
 	return setmetatable({
-		bufnr = bufnr,
+		bufnr = bufnr or 0,
 		filter = filter,
 		to_pending = {},
 	}, { __index = M })

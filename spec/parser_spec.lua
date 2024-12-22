@@ -283,5 +283,18 @@ end)
 			assert.are.same(1, #funcs)
 			assert.are.same({ desc = "i11", row = 2, col = 1, name = "it" }, funcs[1]:info())
 		end)
+
+		it("select one it child, with other func, means, no describe or it", function()
+			local bufnr = create_buffer([[
+describe("d11", function()
+  local function foo(input) end
+  it("i11", function() end)
+  ohter_func(function() end)
+end)
+]])
+			local search_node = create_node_mock({ 2, 2 })
+			local funcs = p.to_pending_with_node(bufnr, search_node)
+			assert.are.same(0, #funcs)
+		end)
 	end)
 end)
