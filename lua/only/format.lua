@@ -18,20 +18,4 @@ M.duration_to_str = function(duration)
 	end
 end
 
--- HIGHLIGHT for all nodes, which a should converted to pending
--- the node needs two methods:
---	- range() (line and start column)
---	- the name() of the node/function
-M.highlight_to_pending_nodes = function(to_pending_nodes, bufnr)
-	bufnr = bufnr or 0
-	local highlight = "Constant"
-	local namespace = 0
-
-	for _, n in pairs(to_pending_nodes) do
-		local line, cstart = n:range()
-		local cend = cstart + #n:name()
-		vim.api.nvim_buf_add_highlight(bufnr, namespace, highlight, line, cstart, cend)
-	end
-end
-
 return M
