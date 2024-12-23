@@ -6,6 +6,10 @@ M.to_pending_with_tags = function(bufnr, tags)
 	return M.new(bufnr, M.tag_filter(tags)):_find_all_to_pending_funcs()
 end
 
+M.selected_with_tags = function(bufnr, tags)
+	return M.new(bufnr, M.tag_filter(tags)):_find_all_to_pending_funcs()
+end
+
 M.to_pending_with_node = function(bufnr, search_node)
 	return M.new(bufnr, M.node_filter(search_node)):_find_all_to_pending_funcs()
 end
@@ -15,6 +19,7 @@ M.new = function(bufnr, filter)
 		bufnr = bufnr or 0,
 		filter = filter,
 		to_pending = {},
+		selected = {},
 	}, { __index = M })
 end
 
@@ -46,11 +51,13 @@ function M:_find_all_to_pending_funcs()
 				else
 					table.insert(self.to_pending, n)
 				end
+			else
+				table.insert(self.selected, n)
 			end
 		end
 	end
 
-	return self.to_pending
+	return self.to_pending, self.selected
 end
 
 function M:_children_walker(parent_node)
@@ -76,6 +83,7 @@ function M:_children_walker(parent_node)
 			end
 		else
 			at_least_one_match = true
+			table.insert(self.selected, child)
 		end
 	end
 
