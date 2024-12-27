@@ -1,6 +1,13 @@
 local assert = require("luassert")
 local f = require("only.func")
 
+local parse_string = function(input)
+	local parser = vim.treesitter.get_string_parser(input, "lua", {})
+	local tree = parser:parse()[1]
+	local chunk = tree:root()
+	return f.new(chunk, input)
+end
+
 describe("get func node:", function()
 	local function create_win_and_set_cursor(input, cursor)
 		local bufnr = vim.api.nvim_create_buf(false, false)
@@ -80,14 +87,6 @@ end)
 end)
 
 describe("func nodes:", function()
-	local parse_string = function(input)
-		local parser = vim.treesitter.get_string_parser(input, "lua", {})
-		local tree = parser:parse()[1]
-		local chunk = tree:root()
-		-- print(".." .. chunk:next_sibling():type())
-		return f.new(chunk, input)
-	end
-
 	it("onyl root node", function()
 		local input = [[ 
 describe("example", function() end)
@@ -136,5 +135,31 @@ end)
 		local child_child = desc:children()[1]:children()
 		assert.are.same(1, #child_child)
 		assert.are.same({ desc = "child-child", row = 2, col = 4, name = "it" }, child_child[1]:info())
+	end)
+end)
+
+describe("func node errors:", function()
+	it("missing open parentheses", function()
+		local input = [[ 
+describe"example", function() end)
+]]
+		local chunk = parse_string(input)
+		local desc = chunk:children()[1]
+		assert.are.same("describe", desc:name())
+
+		-- couldn't call node:desc()
+		local ok = pcall(desc.desc, desc)
+		assert.is_false(ok)
+	end)
+
+	it("is not describe or it function", function()
+		local input = [[ 
+describe("example", function()
+  foo()
+end)
+]]
+		local chunk = parse_string(input)
+		local foo = chunk:children()[1]:children()[1]
+		assert.is_nil(foo)
 	end)
 end)

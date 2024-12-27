@@ -13,6 +13,17 @@ local function find_first_parent_func_node(tsnode, source)
 	return nil
 end
 
+local function throw_error(tsnode)
+	local r, c = tsnode:range()
+	local infos = {
+		row = r,
+		col = c,
+		type = tsnode:type(),
+	}
+
+	error("this node is not a valid function node (describe or it): " .. vim.inspect(infos), 0)
+end
+
 -- create a wrapper for an TSNode, to get ease access to the methods:
 -- - range
 -- - name of the function
@@ -52,21 +63,29 @@ end
 
 function M:name()
 	if self.inner:type() == "function_call" then
-		local name = self.inner:field("name")[1]
-		return vim.treesitter.get_node_text(name, self.source)
-	else
-		error("this node is not an function_call: " .. self.inner:type(), 0)
+		local field = self.inner:field("name")
+		if field then
+			local name = field[1]
+			return vim.treesitter.get_node_text(name, self.source)
+		end
 	end
+
+	throw_error(self.inner)
 end
 
 function M:desc()
 	if self.inner:type() == "function_call" then
-		local arg = self.inner:field("arguments")[1]
-		local desc = arg:child(1):field("content")[1]
-		return vim.treesitter.get_node_text(desc, self.source)
-	else
-		error("this node is not an function_call: " .. self.inner:type(), 0)
+		local args = self.inner:field("arguments")
+		if args then
+			local c = args[1]:child(1)
+			if c and c:field("content") then
+				local desc = c:field("content")[1]
+				return vim.treesitter.get_node_text(desc, self.source)
+			end
+		end
 	end
+
+	throw_error(self.inner)
 end
 
 function M:_find_first_child_func_node(tsparent_node)
