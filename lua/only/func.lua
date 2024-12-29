@@ -2,8 +2,8 @@ local M = {}
 
 local function find_first_parent_func_node(tsnode, source)
 	while tsnode do
-		local node = M.new(tsnode, source)
-		if node:is_valid_func_node() then
+		local node, err = M.new(tsnode, source)
+		if not err then
 			return node
 		end
 
@@ -13,27 +13,54 @@ local function find_first_parent_func_node(tsnode, source)
 	return nil
 end
 
-local function throw_error(tsnode)
-	local r, c = tsnode:range()
-	local infos = {
-		row = r,
-		col = c,
-		type = tsnode:type(),
-	}
-
-	error("this node is not a valid function node (describe or it): " .. vim.inspect(infos), 0)
-end
-
 -- create a wrapper for an TSNode, to get ease access to the methods:
--- - range
+-- - range: row and col
 -- - name of the function
 -- - text of the description
 --
 M.new = function(tsnode, source)
-	return setmetatable({
+	if tsnode:type() ~= "function_call" then
+		return nil, "type is not a function_call: " .. tsnode:type()
+	end
+
+	local args = tsnode:field("arguments")
+	if #args == 0 then
+		return nil, "arguments are missing"
+	end
+
+	-- child(0) == '(' and child(1) is the correct argument
+	-- child_count must be greater then 1
+	local args_child_count = args[1]:child_count()
+	if args_child_count == 0 then
+		return nil, "missing arguments childs"
+	elseif args_child_count == 1 then
+		local txt = vim.treesitter.get_node_text(args[1]:child(0), source)
+		return nil, "invalid argument child: '" .. txt .. "'. Expected: '('"
+	end
+
+	local c = args[1]:child(1)
+	local desc
+	if c:type() == "string" then
+		local d = c:field("content")[1]
+		desc = vim.treesitter.get_node_text(d, source)
+	elseif c:type() == "identifier" then
+		desc = vim.treesitter.get_node_text(c, source)
+	else
+		return nil, "invalid argument type: " .. c:type()
+	end
+
+	local row, col = tsnode:range()
+	local name = tsnode:field("name")[1]
+	local n = {
+		desc = desc,
+		name = vim.treesitter.get_node_text(name, source),
+		row = row,
+		col = col,
 		inner = tsnode,
 		source = source or 0,
-	}, { __index = M })
+	}
+
+	return setmetatable(n, { __index = M })
 end
 
 -- create a wrapper for the TSNode, which is founded at the cursor position
@@ -48,49 +75,10 @@ M.node_at_cursor = function(source)
 	return node
 end
 
-function M:is_valid_func_node()
-	if self.inner:type() ~= "function_call" then
-		return false
-	end
-
-	local ok, name = pcall(self.name, self)
-	return ok and (name == "describe" or name == "it")
-end
-
-function M:range()
-	return self.inner:range()
-end
-
-function M:name()
-	if self.inner:type() == "function_call" then
-		local field = self.inner:field("name")
-		if field then
-			local name = field[1]
-			return vim.treesitter.get_node_text(name, self.source)
-		end
-	end
-
-	throw_error(self.inner)
-end
-
-function M:desc()
-	if self.inner:type() == "function_call" then
-		local args = self.inner:field("arguments")
-		if args then
-			local c = args[1]:child(1)
-			if c and c:field("content") then
-				local desc = c:field("content")[1]
-				return vim.treesitter.get_node_text(desc, self.source)
-			end
-		end
-	end
-
-	throw_error(self.inner)
-end
-
 function M:_find_first_child_func_node(tsparent_node)
 	for child in tsparent_node:iter_children() do
-		if M.new(child, self.source):is_valid_func_node() then
+		local _, err = M.new(child, self.source)
+		if not err then
 			return child
 		end
 
@@ -108,8 +96,8 @@ function M:children()
 
 	local child_func = self:_find_first_child_func_node(self.inner)
 	while child_func do
-		local node = M.new(child_func, self.source)
-		if node:is_valid_func_node() then
+		local node, err = M.new(child_func, self.source)
+		if not err then
 			table.insert(children, node)
 		end
 		child_func = child_func:next_sibling()
@@ -119,8 +107,7 @@ function M:children()
 end
 
 function M:info()
-	local r, c = self:range()
-	return { row = r, col = c, name = self:name(), desc = self:desc() }
+	return { row = self.row, col = self.col, name = self.name, desc = self.desc }
 end
 
 return M

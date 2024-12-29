@@ -3,9 +3,8 @@ local p = require("only.parser")
 
 local function create_node_mock(val)
 	return setmetatable({
-		range = function()
-			return val[1], val[2]
-		end,
+		row = val[1],
+		col = val[2],
 	}, { __index = {} })
 end
 
@@ -18,17 +17,27 @@ describe("parse:", function()
 	end
 
 	describe("tags:", function()
-		it("no pending funcs", function()
-			local bufnr = create_buffer([[ pending("d1", function() end) ]])
-			local funcs = p.to_pending_with_tags(bufnr, "only")
-			assert.are.same(0, #funcs)
-		end)
-
 		it("one node with no match is pending", function()
 			local bufnr = create_buffer([[ it("i1", function() end) ]])
 			local funcs, sel = p.to_pending_with_tags(bufnr, "only")
 			assert.are.same(1, #funcs)
 			assert.are.same({ desc = "i1", row = 0, col = 1, name = "it" }, funcs[1]:info())
+			assert.are.same(0, #sel)
+		end)
+
+		it("describe with no desc", function()
+			local bufnr = create_buffer([[ describe(param, function() end) ]])
+			local funcs, sel = p.to_pending_with_tags(bufnr, "only")
+			assert.are.same(1, #funcs)
+			assert.are.same({ desc = "param", row = 0, col = 1, name = "describe" }, funcs[1]:info())
+			assert.are.same(0, #sel)
+		end)
+
+		it("describe with no desc and func with params", function()
+			local bufnr = create_buffer([[ describe(param, function(a, b) end) ]])
+			local funcs, sel = p.to_pending_with_tags(bufnr, "only")
+			assert.are.same(1, #funcs)
+			assert.are.same({ desc = "param", row = 0, col = 1, name = "describe" }, funcs[1]:info())
 			assert.are.same(0, #sel)
 		end)
 
@@ -47,15 +56,15 @@ end)
 
 		it("parent is tagged -> children too (inherit)", function()
 			local bufnr = create_buffer([[
-describe("d1 only", function()
+describe("d1 #only", function()
 	it("i11", function() end)
 	it("i21", function() end)
 end)
 ]])
-			local funcs, sel = p.to_pending_with_tags(bufnr, "only")
+			local funcs, sel = p.to_pending_with_tags(bufnr, "#only")
 			assert.are.same(0, #funcs)
 			assert.are.same(1, #sel)
-			assert.are.same({ desc = "d1 only", row = 0, col = 0, name = "describe" }, sel[1]:info())
+			assert.are.same({ desc = "d1 #only", row = 0, col = 0, name = "describe" }, sel[1]:info())
 		end)
 
 		it("parent and children not tagged, all pending", function()
@@ -263,14 +272,31 @@ end)
 			assert.are.same({ desc = "i11", row = 2, col = 2, name = "it" }, sel[1]:info())
 		end)
 
-		it("error in lua file, no open parentheses", function()
+		it("missing open parentheses, ignore describe, ignore all childs", function()
 			local bufnr = create_buffer([[
   describe"d11", function()
 	it("i11 only", function() end)
   end)
 ]])
-			local ok = pcall(p.to_pending_with_tags, bufnr, "only")
-			assert.is_false(ok)
+			local funcs, sel = p.to_pending_with_tags(bufnr, "only")
+			assert.are.same(0, #funcs)
+			assert.are.same(0, #sel)
+		end)
+	end)
+
+	describe("ignore func-nodes:", function()
+		it("pending", function()
+			local bufnr = create_buffer([[ pending("d1", function() end) ]])
+			local funcs, sel = p.to_pending_with_tags(bufnr, "only")
+			assert.are.same(0, #funcs)
+			assert.are.same(0, #sel)
+		end)
+
+		it("describe without desc", function()
+			local bufnr = create_buffer([[ describe(function() end) ]])
+			local funcs, sel = p.to_pending_with_tags(bufnr, "only")
+			assert.are.same(0, #funcs)
+			assert.are.same(0, #sel)
 		end)
 	end)
 end)

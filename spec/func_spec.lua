@@ -1,3 +1,5 @@
+---@diagnostic disable: need-check-nil
+
 local assert = require("luassert")
 local f = require("only.func")
 
@@ -5,7 +7,12 @@ local parse_string = function(input)
 	local parser = vim.treesitter.get_string_parser(input, "lua", {})
 	local tree = parser:parse()[1]
 	local chunk = tree:root()
-	return f.new(chunk, input)
+	local first_child = chunk:child(0)
+	local n, err = f.new(first_child, input)
+	if err then
+		print("Error: " .. err)
+	end
+	return n, err
 end
 
 describe("get func node:", function()
@@ -52,7 +59,7 @@ describe("describe test-func", function() end)
 		)
 
 		local func = f.node_at_cursor(bufnr)
-		assert.are.same("describe test-func", func:desc())
+		assert.are.same("describe test-func", func.desc)
 	end)
 
 	it("func found", function()
@@ -66,23 +73,23 @@ end)
 ]]
 		local bufnr = create_win_and_set_cursor(input, { 3, 3 })
 		local func = f.node_at_cursor(bufnr)
-		assert.are.same("it test-func", func:desc())
+		assert.are.same("it test-func", func.desc)
 
 		bufnr = create_win_and_set_cursor(input, { 4, 6 })
 		func = f.node_at_cursor(bufnr)
-		assert.are.same("it test-func", func:desc())
+		assert.are.same("it test-func", func.desc)
 
 		bufnr = create_win_and_set_cursor(input, { 5, 3 })
 		func = f.node_at_cursor(bufnr)
-		assert.are.same("it test-func", func:desc())
+		assert.are.same("it test-func", func.desc)
 
 		bufnr = create_win_and_set_cursor(input, { 2, 3 })
 		func = f.node_at_cursor(bufnr)
-		assert.are.same("describe", func:desc())
+		assert.are.same("describe", func.desc)
 
 		bufnr = create_win_and_set_cursor(input, { 6, 3 })
 		func = f.node_at_cursor(bufnr)
-		assert.are.same("describe", func:desc())
+		assert.are.same("describe", func.desc)
 	end)
 end)
 
@@ -91,11 +98,11 @@ describe("func nodes:", function()
 		local input = [[ 
 describe("example", function() end)
 ]]
-		local chunk = parse_string(input)
-		local desc = chunk:children()[1]
-		assert.are.same("describe", desc:name())
-		assert.are.same("example", desc:desc())
-		assert.are.same({}, desc:children())
+		local n, err = parse_string(input)
+		assert.is_nil(err)
+		assert.are.same("describe", n.name)
+		assert.are.same("example", n.desc)
+		assert.are.same({}, n:children())
 	end)
 
 	it("func with children", function()
@@ -105,15 +112,15 @@ describe("example", function()
   it("second", function() end)
 end)
 ]]
-		local chunk = parse_string(input)
-		local desc = chunk:children()[1]
-		assert.are.same("describe", desc:name())
-		assert.are.same("example", desc:desc())
+		local n, err = parse_string(input)
+		assert.is_nil(err)
+		assert.are.same("describe", n.name)
+		assert.are.same("example", n.desc)
 
-		local children = desc:children()
+		local children = n:children()
 		assert.are.same(2, #children)
-		assert.are.same("first", children[1]:desc())
-		assert.are.same("second", children[2]:desc())
+		assert.are.same("first", children[1].desc)
+		assert.are.same("second", children[2].desc)
 	end)
 
 	it("func with child, child", function()
@@ -124,15 +131,15 @@ describe("parent", function()
   end)
 end)
 ]]
-		local chunk = parse_string(input)
-		local desc = chunk:children()[1]
-		assert.are.same({ desc = "parent", row = 0, col = 0, name = "describe" }, desc:info())
+		local n, err = parse_string(input)
+		assert.is_nil(err)
+		assert.are.same({ desc = "parent", row = 0, col = 0, name = "describe" }, n:info())
 
-		local children = desc:children()
+		local children = n:children()
 		assert.are.same(1, #children)
 		assert.are.same({ desc = "child", row = 1, col = 2, name = "describe" }, children[1]:info())
 
-		local child_child = desc:children()[1]:children()
+		local child_child = n:children()[1]:children()
 		assert.are.same(1, #child_child)
 		assert.are.same({ desc = "child-child", row = 2, col = 4, name = "it" }, child_child[1]:info())
 	end)
@@ -143,13 +150,8 @@ describe("func node errors:", function()
 		local input = [[ 
 describe"example", function() end)
 ]]
-		local chunk = parse_string(input)
-		local desc = chunk:children()[1]
-		assert.are.same("describe", desc:name())
-
-		-- couldn't call node:desc()
-		local ok = pcall(desc.desc, desc)
-		assert.is_false(ok)
+		local _, err = parse_string(input)
+		assert.is_not_nil(err)
 	end)
 
 	it("is not describe or it function", function()
@@ -158,8 +160,9 @@ describe("example", function()
   foo()
 end)
 ]]
-		local chunk = parse_string(input)
-		local foo = chunk:children()[1]:children()[1]
+		local n, err = parse_string(input)
+		assert.is_nil(err)
+		local foo = n:children()[1]
 		assert.is_nil(foo)
 	end)
 end)

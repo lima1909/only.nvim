@@ -34,8 +34,21 @@ function M:_find_all_to_pending_funcs()
 		"lua",
 		-- chunk means only the functions which are direct under the root node
 		[[
-(chunk 
-( function_call name: (identifier) @fname (#any-of? @fname "describe" "it")) @func
+( chunk 
+
+( function_call 
+  name: (identifier) @fname (#any-of? @fname "describe" "it")
+  arguments: (arguments
+   [
+    (string content: (string_content))
+    (identifier)
+   ]
+    ; (function_definition
+    ;    parameters: (parameters) @params (#eq? @params "()")
+    ; )
+  )
+) @func
+
 )
 ]]
 	)
@@ -44,6 +57,10 @@ function M:_find_all_to_pending_funcs()
 		local capture_name = query.captures[id]
 		if capture_name == "func" then
 			local n = func.new(node, self.bufnr)
+			-- ignore not valid function node
+			if not n then
+				goto continue
+			end
 
 			if self.filter(n) == false then
 				if #n:children() > 0 then
@@ -55,6 +72,8 @@ function M:_find_all_to_pending_funcs()
 				table.insert(self.selected, n)
 			end
 		end
+
+		::continue::
 	end
 
 	return self.to_pending, self.selected
@@ -109,13 +128,12 @@ function M.tag_filter(tag)
 			return false
 		end
 
-		local desc = func_node:desc()
-		if not desc then
+		if not func_node.desc then
 			return false
 		end
 
 		for _, t in ipairs(tags) do
-			if desc:match(t) then
+			if func_node.desc:match(t) then
 				return true
 			end
 		end
@@ -130,10 +148,7 @@ function M.node_filter(search_node)
 			return false
 		end
 
-		local srow, scol = search_node:range()
-		local frow, fcol = func_node:range()
-		local result = srow == frow and scol == fcol
-		return result
+		return search_node.row == func_node.row and search_node.col == func_node.col
 	end
 end
 

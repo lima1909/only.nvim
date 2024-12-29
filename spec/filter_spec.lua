@@ -2,14 +2,16 @@ local assert = require("luassert")
 local p = require("only.parser")
 
 local function create_node_mock(val)
-	return setmetatable({
-		desc = function()
-			return val
-		end,
-		range = function()
-			return val[1], val[2]
-		end,
+	local n = setmetatable({
+		desc = val,
 	}, { __index = {} })
+
+	if val then
+		n.row = val[1]
+		n.col = val[2]
+	end
+
+	return n
 end
 
 describe("filter:", function()
