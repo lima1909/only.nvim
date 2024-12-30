@@ -1,4 +1,4 @@
-local f = require("only.func")
+local f = require("only.fnode")
 local p = require("only.parser")
 local hl = require("only.highlight")
 

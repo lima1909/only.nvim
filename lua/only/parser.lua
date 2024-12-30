@@ -1,17 +1,15 @@
-local func = require("only.func")
-
 local M = {}
 
 M.to_pending_with_tags = function(bufnr, tags)
-	return M.new(bufnr, M.tag_filter(tags)):_find_all_to_pending_funcs()
+	return M.new(bufnr, M.tag_filter(tags)):_find_fnodes()
 end
 
 M.selected_with_tags = function(bufnr, tags)
-	return M.new(bufnr, M.tag_filter(tags)):_find_all_to_pending_funcs()
+	return M.new(bufnr, M.tag_filter(tags)):_find_fnodes()
 end
 
 M.to_pending_with_node = function(bufnr, search_node)
-	return M.new(bufnr, M.node_filter(search_node)):_find_all_to_pending_funcs()
+	return M.new(bufnr, M.node_filter(search_node)):_find_fnodes()
 end
 
 M.new = function(bufnr, filter)
@@ -25,7 +23,7 @@ end
 
 -- find 'describe' or 'it' top level functions,
 -- which are under the root ('chunk') and do NOT contain the 'tag'
-function M:_find_all_to_pending_funcs()
+function M:_find_fnodes()
 	local parser = vim.treesitter.get_parser(self.bufnr, "lua")
 	local tree = parser:parse()[1]
 	local root = tree:root()
@@ -35,20 +33,7 @@ function M:_find_all_to_pending_funcs()
 		-- chunk means only the functions which are direct under the root node
 		[[
 ( chunk 
-
-( function_call 
-  name: (identifier) @fname (#any-of? @fname "describe" "it")
-  arguments: (arguments
-   [
-    (string content: (string_content))
-    (identifier)
-   ]
-    ; (function_definition
-    ;    parameters: (parameters) @params (#eq? @params "()")
-    ; )
-  )
-) @func
-
+( function_call name: (identifier) @fname (#any-of? @fname "describe" "it")) @func
 )
 ]]
 	)
@@ -56,24 +41,22 @@ function M:_find_all_to_pending_funcs()
 	for id, node, _ in query:iter_captures(root, self.bufnr) do
 		local capture_name = query.captures[id]
 		if capture_name == "func" then
-			local n = func.new(node, self.bufnr)
+			local err, new_fnode = require("only.fnode").check_tsnode(node, self.bufnr)
 			-- ignore not valid function node
-			if not n then
-				goto continue
-			end
+			if not err then
+				local n = new_fnode()
 
-			if self.filter(n) == false then
-				if #n:children() > 0 then
-					self:_children_walker(n)
+				if self.filter(n) == false then
+					if #n.children > 0 then
+						self:_children_walker(n)
+					else
+						table.insert(self.to_pending, n)
+					end
 				else
-					table.insert(self.to_pending, n)
+					table.insert(self.selected, n)
 				end
-			else
-				table.insert(self.selected, n)
 			end
 		end
-
-		::continue::
 	end
 
 	return self.to_pending, self.selected
@@ -90,11 +73,11 @@ function M:_children_walker(parent_node)
 	local at_least_one_match = false
 
 	local temp_children = {}
-	for _, child in ipairs(parent_node:children()) do
+	for _, child in ipairs(parent_node.children) do
 		if self.filter(child) == false then
 			not_match = true
 
-			if #child:children() > 0 then
+			if #child.children > 0 then
 				not_match = false
 				self:_children_walker(child)
 			else
@@ -123,17 +106,17 @@ function M.tag_filter(tag)
 		tags = { tag }
 	end
 
-	return function(func_node)
-		if not tags or not func_node then
+	return function(fnode)
+		if not tags or not fnode then
 			return false
 		end
 
-		if not func_node.desc then
+		if not fnode.desc then
 			return false
 		end
 
 		for _, t in ipairs(tags) do
-			if func_node.desc:match(t) then
+			if fnode.desc:match(t) then
 				return true
 			end
 		end
@@ -143,12 +126,12 @@ function M.tag_filter(tag)
 end
 
 function M.node_filter(search_node)
-	return function(func_node)
-		if not search_node or not func_node then
+	return function(fnode)
+		if not search_node or not fnode then
 			return false
 		end
 
-		return search_node.row == func_node.row and search_node.col == func_node.col
+		return search_node.row == fnode.row and search_node.col == fnode.col
 	end
 end
 
