@@ -21,26 +21,29 @@ M.highlight = function(bufnr, funcs)
 	end
 
 	for _, f in pairs(funcs) do
-		local line, cstart = f:range()
 		if reset == false then
-			local cend = cstart + #f:name()
-			vim.api.nvim_buf_add_highlight(bufnr, namespace, "OnlyPendingHighlight", line, cstart, cend)
+			local cend = f.col + #f.name
+			vim.api.nvim_buf_add_highlight(bufnr, namespace, "OnlyPendingHighlight", f.row, f.col, cend)
 			vim.fn.setqflist({
 				{
 					bufnr = bufnr,
-					lnum = line + 1,
+					lnum = f.row + 1,
 					col = 0,
-					end_col = cstart,
-					text = "only: " .. f:desc(),
+					end_col = f.col,
+					text = "only: " .. f.desc,
 					type = "I",
 				},
 			}, "a")
-			vim.fn.sign_place(0, "OnlyQuickfixGroup", "OnlyQuickfixMarker", vim.fn.bufnr("%"), { lnum = line + 1 })
+			vim.fn.sign_place(0, "OnlyQuickfixGroup", "OnlyQuickfixMarker", vim.fn.bufnr("%"), { lnum = f.row + 1 })
 		else
-			vim.api.nvim_buf_clear_namespace(bufnr, namespace, line, line + 1)
-			vim.fn.setqflist({ { bufnr = bufnr, lnum = line + 1, col = cstart } }, "f")
+			vim.api.nvim_buf_clear_namespace(bufnr, namespace, f.row, f.row + 1)
+			vim.fn.setqflist({ { bufnr = bufnr, lnum = f.row + 1, col = f.col } }, "f")
 			vim.fn.sign_unplace("OnlyQuickfixGroup")
 		end
+	end
+
+	if funcs then
+		vim.api.nvim_echo({ { "found: " .. #funcs .. " functions", "Info" } }, false, {})
 	end
 end
 
