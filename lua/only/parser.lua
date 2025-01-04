@@ -41,16 +41,16 @@ function M:_find_fnodes()
 	for id, node, _ in query:iter_captures(root, self.bufnr) do
 		local capture_name = query.captures[id]
 		if capture_name == "func" then
-			local err, new_fnode = require("only.fnode").check_tsnode(node, self.bufnr)
+			local new_fnode = require("only.fnode").check_tsnode(node, self.bufnr)
 			-- ignore not valid function node
-			if not err then
+			if new_fnode then
 				local n = new_fnode()
 
 				if self.filter(n) == false then
 					if #n.children > 0 then
 						self:_children_walker(n)
 					else
-						table.insert(self.to_pending, n)
+						self.to_pending[n.row] = n
 					end
 				else
 					table.insert(self.selected, n)
@@ -90,12 +90,12 @@ function M:_children_walker(parent_node)
 	end
 
 	if at_least_one_match == false and not_match == true then
-		table.insert(self.to_pending, parent_node)
+		self.to_pending[parent_node.row] = parent_node
 	elseif at_least_one_match == true and not_match == false then
 		return
 	else
 		for _, c in ipairs(temp_children) do
-			table.insert(self.to_pending, c)
+			self.to_pending[c.row] = c
 		end
 	end
 end

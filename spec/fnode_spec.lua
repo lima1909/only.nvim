@@ -1,3 +1,5 @@
+---@diagnostic disable: need-check-nil
+
 local assert = require("luassert")
 local f = require("only.fnode")
 
@@ -6,17 +8,16 @@ local parse_string = function(input)
 	local tree = parser:parse()[1]
 	local chunk = tree:root()
 	local first_child = chunk:child(0)
-	local err, new_fnode = f.check_tsnode(first_child, input)
-	if err then
-		print("Hint: " .. tostring(err))
-		return {}, err
+	local new_fnode = f.check_tsnode(first_child, input)
+	if not new_fnode then
+		return nil
 	end
 
-	return new_fnode(), err
+	return new_fnode()
 end
 
 local function info(n)
-	return { row = n.row, col = n.col, name = n.name, desc = n.desc }
+	return { row = n.row, col = n.col, erow = n.erow, name = n.name, desc = n.desc }
 end
 
 describe("node at cursor:", function()
@@ -115,8 +116,7 @@ describe("example", function()
   it("second", function() end)
 end)
 ]]
-		local n, hint = parse_string(input)
-		assert.is_nil(hint)
+		local n = parse_string(input)
 		assert.are.same("describe", n.name)
 		assert.are.same("example", n.desc)
 
@@ -135,14 +135,14 @@ end)
 ]]
 		local n, err = parse_string(input)
 		assert.is_nil(err)
-		assert.are.same({ desc = "parent", row = 0, col = 0, name = "describe" }, info(n))
+		assert.are.same({ desc = "parent", row = 1, col = 0, erow = 5, name = "describe" }, info(n))
 
 		assert.are.same(1, #n.children)
-		assert.are.same({ desc = "child", row = 1, col = 2, name = "describe" }, info(n.children[1]))
+		assert.are.same({ desc = "child", row = 2, col = 2, erow = 4, name = "describe" }, info(n.children[1]))
 
 		local child_child = n.children[1].children
 		assert.are.same(1, #child_child)
-		assert.are.same({ desc = "child-child", row = 2, col = 4, name = "it" }, info(child_child[1]))
+		assert.are.same({ desc = "child-child", row = 3, col = 4, erow = 3, name = "it" }, info(child_child[1]))
 	end)
 
 	it("func with child, two children", function()
@@ -160,20 +160,20 @@ end)
 ]]
 		local n, err = parse_string(input)
 		assert.is_nil(err)
-		assert.are.same({ desc = "parent", row = 0, col = 0, name = "describe" }, info(n))
+		assert.are.same({ desc = "parent", row = 1, col = 0, erow = 10, name = "describe" }, info(n))
 
 		assert.are.same(2, #n.children)
-		assert.are.same({ desc = "child1", row = 1, col = 2, name = "describe" }, info(n.children[1]))
-		assert.are.same({ desc = "child2", row = 5, col = 2, name = "describe" }, info(n.children[2]))
+		assert.are.same({ desc = "child1", row = 2, col = 2, erow = 4, name = "describe" }, info(n.children[1]))
+		assert.are.same({ desc = "child2", row = 6, col = 2, erow = 9, name = "describe" }, info(n.children[2]))
 
 		local child11 = n.children[1].children
 		assert.are.same(1, #child11)
-		assert.are.same({ desc = "child11", row = 2, col = 4, name = "it" }, info(child11[1]))
+		assert.are.same({ desc = "child11", row = 3, col = 4, erow = 3, name = "it" }, info(child11[1]))
 
 		local child21 = n.children[2].children
 		assert.are.same(2, #child21)
-		assert.are.same({ desc = "child21", row = 6, col = 4, name = "it" }, info(child21[1]))
-		assert.are.same({ desc = "child22", row = 7, col = 4, name = "it" }, info(child21[2]))
+		assert.are.same({ desc = "child21", row = 7, col = 4, erow = 7, name = "it" }, info(child21[1]))
+		assert.are.same({ desc = "child22", row = 8, col = 4, erow = 8, name = "it" }, info(child21[2]))
 	end)
 
 	it("is not a string parameter, is an identifier", function()
@@ -182,7 +182,7 @@ describe(example, function() end)
 ]]
 		local n, err = parse_string(input)
 		assert.is_nil(err)
-		assert.are.same({ desc = "example", row = 1, col = 0, name = "describe" }, info(n))
+		assert.are.same({ desc = "example", row = 2, col = 0, erow = 2, name = "describe" }, info(n))
 	end)
 end)
 
@@ -191,8 +191,8 @@ describe("fnode errors:", function()
 		local input = [[ 
 describe"example", function() end)
 ]]
-		local _, err = parse_string(input)
-		assert.is_not_nil(err)
+		local new_fnode = parse_string(input)
+		assert.is_nil(new_fnode)
 	end)
 
 	it("is not describe or it function", function()
@@ -211,23 +211,23 @@ end)
 		local input = [[ 
 describe(1, function() end)
 ]]
-		local _, err = parse_string(input)
-		assert.is_not_nil(err)
+		local new_fnode = parse_string(input)
+		assert.is_nil(new_fnode)
 	end)
 
 	it("is not valid function_call", function()
 		local input = [[ 
 function("test", function() end)
 ]]
-		local _, err = parse_string(input)
-		assert.is_not_nil(err)
+		local new_fnode = parse_string(input)
+		assert.is_nil(new_fnode)
 	end)
 
 	it("no parameters", function()
 		local input = [[ 
 describe()
 ]]
-		local _, err = parse_string(input)
-		assert.is_not_nil(err)
+		local new_fnode = parse_string(input)
+		assert.is_nil(new_fnode)
 	end)
 end)
