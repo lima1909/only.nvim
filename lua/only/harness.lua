@@ -1,25 +1,24 @@
+local file_name
+
 local function create_temp_file()
-	local tmp_file_name = vim.fn.tempname()
-	local file = io.open(tmp_file_name, "w")
+	file_name = vim.fn.tempname()
+	local file = io.open(file_name, "w")
 	if not file then
-		error("Failed to create temp file: " .. tmp_file_name)
+		error("Failed to create temp file: " .. file_name)
 	end
 
-	return file, tmp_file_name
+	return file
 end
 
 local M = {}
 
 M.new = function(writer)
-	local file_name = "no-file-name"
-
-	if not writer then
-		writer, file_name = create_temp_file()
+	if file_name then
+		pcall(vim.fn.delete, file_name)
 	end
 
 	return setmetatable({
-		writer = writer,
-		file_name = file_name,
+		writer = writer or create_temp_file(),
 	}, { __index = M })
 end
 
@@ -34,16 +33,14 @@ function M:remove_pendings(lines, pendings)
 			-- skip lines for pending functions
 			row = fnode.erow
 		else
-			self.writer:write(lines[row])
+			self.writer:write(lines[row] .. "\n")
 		end
 		row = row + 1
 	end
 
 	self.writer:close()
 
-	return self.file_name, function()
-		pcall(vim.fn.delete, self.file_name)
-	end
+	return file_name
 end
 
 return M

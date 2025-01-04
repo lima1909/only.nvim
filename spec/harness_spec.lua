@@ -35,7 +35,7 @@ end
 
 describe("harness with temp file:", function()
 	it("only i11", function()
-		local file, clear = prepare_tests({
+		local file = prepare_tests({
 			'describe("d1", function()',
 			'	it("i11 #only", function()',
 			"	  -- do the tests",
@@ -47,15 +47,13 @@ describe("harness with temp file:", function()
 		}, "#only")
 
 		assert.are.same(
-			'describe("d1", function()	it("i11 #only", function()	  -- do the tests	end)end)',
+			'describe("d1", function()\n	it("i11 #only", function()\n	  -- do the tests\n	end)\nend)\n',
 			file_content(file)
 		)
-
-		clear()
 	end)
 
 	it("only i21", function()
-		local file, clear = prepare_tests({
+		local file = prepare_tests({
 			'describe("d1", function()',
 			'	it("i11", function()',
 			"	  -- do the tests",
@@ -67,11 +65,9 @@ describe("harness with temp file:", function()
 		}, "#only")
 
 		assert.are.same(
-			'describe("d1", function()	it("i21 #only", function()	  -- do the tests	end)end)',
+			'describe("d1", function()\n	it("i21 #only", function()\n	  -- do the tests\n	end)\nend)\n',
 			file_content(file)
 		)
-
-		clear()
 	end)
 end)
 

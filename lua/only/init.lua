@@ -11,9 +11,9 @@ M.run = function(bufnr, opts)
 	local pendings
 
 	if opts.tags then
-		local tags = vim.split(opts.run.tags, ",")
+		local tags = vim.split(opts.tags, ",")
 		pendings = parser.to_pending_with_tags(bufnr, tags)
-	elseif opts.cursor then
+	elseif opts.at_cursor then
 		local n = fnode.node_at_cursor(bufnr)
 		if not n then
 			vim.api.nvim_echo({ { "invalid cursor position, no function found", "Error" } }, false, {})
@@ -27,9 +27,8 @@ M.run = function(bufnr, opts)
 	end
 
 	local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-	local file, clear = harness.new():remove_pendings(lines, pendings)
+	local file = harness.new():remove_pendings(lines, pendings)
 	require("plenary.test_harness").test_file(file)
-	clear()
 end
 
 return M
