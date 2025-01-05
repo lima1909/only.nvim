@@ -62,9 +62,14 @@ M.check_tsnode = function(tsnode, source)
 		return nil
 	end
 
+	local fname = tsnode:field("name")[1]
+	local name = vim.treesitter.get_node_text(fname, source)
+	if name ~= "describe" and name ~= "it" then
+		return nil
+	end
+
 	local args = tsnode:field("arguments")
 	if #args == 0 then
-		-- return hint(tsnode, source, "arguments are missing")
 		return nil
 	end
 
@@ -85,12 +90,6 @@ M.check_tsnode = function(tsnode, source)
 	elseif c:type() == "identifier" then
 		desc = vim.treesitter.get_node_text(c, source)
 	else
-		return nil
-	end
-
-	local fname = tsnode:field("name")[1]
-	local name = vim.treesitter.get_node_text(fname, source)
-	if name ~= "describe" and name ~= "it" then
 		return nil
 	end
 

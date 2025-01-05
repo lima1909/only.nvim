@@ -54,7 +54,7 @@ before_each(function() end)
 		assert.is_nil(n)
 	end)
 
-	it("func found", function()
+	it("func found #only", function()
 		local bufnr = create_win_and_set_cursor(
 			[[
 -- comment
@@ -109,7 +109,7 @@ describe("example", function() end)
 		assert.are.same({}, n.children)
 	end)
 
-	it("func with children", function()
+	it("func with children #only", function()
 		local input = [[
 describe("example", function()
   it("first", function() end)
