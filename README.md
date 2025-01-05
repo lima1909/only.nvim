@@ -7,13 +7,15 @@
 [![Stars](https://img.shields.io/github/stars/lima1909/only.nvim?style=for-the-badge)](https://github.com/lima1909/only.nvim/stargazers)
 
 Filtering [plenary.nvim tests](https://github.com/nvim-lua/plenary.nvim/blob/master/TESTS_README.md). Run `ONLY` the tests you want.
+
+[Features](#features) • [Install](#install) • [Commands](#commands) • [Examples](#examples)
+
 </div>
 
 > [!NOTE]
 >
 > The project is still in development and can change. 
 
-[Features](#features) • [Install](#install) • [Commands](#commands) • [Examples](#examples)
 
 ## Features
 
