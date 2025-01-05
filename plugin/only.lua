@@ -1,4 +1,4 @@
-vim.api.nvim_create_user_command("OnlyTestFile", function(args)
+vim.api.nvim_create_user_command("OnlyBustedFile", function(args)
 	if args and #args.fargs > 0 then
 		-- lazy loading of only
 		local only = require("only")

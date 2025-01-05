@@ -10,6 +10,58 @@ Filtering [plenary.nvim tests](https://github.com/nvim-lua/plenary.nvim/blob/mas
 </div>
 
 > [!NOTE]
-> The project is still in development and will change a lot in the initial phase. 
 >
-> At the moment it is not working yet!
+> The project is still in development and can change. 
+
+[Features](#features) • [Install](#install) • [Commands](#commands) • [Examples](#examples)
+
+## Features
+
+It's easy to run isolated tests in the current open buffer/file:
+
+* per tags
+* where the current cursor is located
+
+
+## Install
+
+- packer.nvim:
+
+  ```lua
+  use {
+    "lima1909/only.nvim",
+    requires = { "nvim-lua/plenary.nvim" },
+  }
+  ```
+
+- lazy.nvim:
+
+  ```lua
+  {
+    "lima1909/only.nvim",
+    dependencies = { "nvim-lua/plenary.nvim" },
+  },
+  ```
+
+  ## Commands
+
+| User command                        | Description                                                      |
+|-------------------------------------|------------------------------------------------------------------|
+| `:OnlyBustedFile tags [your tags]`  | run all tests, which contains one of the tags in the description |
+| `:OnlyBustedFile at_cursor`         | run all tests, which the cursor contains                         |
+
+## Examples
+
+### Tags: `thisone,other`
+
+Command: `:OnlyBustedFile tags thisone,other`
+
+```lua
+describe("my group", function()
+	it("first test, thisone", function() end)
+	it("second test", function() end)
+	it("third testi, other", function() end)
+end)
+```
+
+Runs first and third test.
